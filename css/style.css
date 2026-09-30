@@ -1,0 +1,56 @@
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 0 16px 40px;
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #0f1420; color: #dbe4f0;
+}
+header { padding: 20px 0 8px; }
+h1 { margin: 0 0 4px; font-size: 22px; }
+.sub { margin: 0 0 8px; color: #8fa3bf; font-size: 13px; }
+.identity { font-size: 13px; color: #9fb4d0; }
+.identity code { background: #1c2740; padding: 2px 6px; border-radius: 4px; color: #7fd4ff; }
+#peerInfo { margin-left: 12px; color: #6f87a8; }
+main { display: flex; flex-direction: column; gap: 14px; }
+.panel {
+  background: #151c2e; border: 1px solid #243150; border-radius: 10px;
+  padding: 14px 16px;
+}
+.panel h2 { margin: 0 0 10px; font-size: 15px; color: #a8c4ee; }
+.row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 8px; }
+.row:last-child { margin-bottom: 0; }
+label { font-size: 13px; color: #9fb4d0; display: flex; align-items: center; gap: 6px; }
+select, input[type=number] {
+  background: #0f1524; color: #dbe4f0; border: 1px solid #2c3c63;
+  border-radius: 6px; padding: 5px 8px; font-size: 13px;
+}
+input[type=number] { width: 70px; }
+button {
+  background: #2b6cb0; color: #fff; border: none; border-radius: 6px;
+  padding: 6px 14px; font-size: 13px; cursor: pointer;
+}
+button:hover { background: #3580cc; }
+button:disabled { background: #3a4a6b; cursor: not-allowed; }
+.hint { font-size: 12px; color: #6f87a8; }
+.result { font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
+.result .pass { color: #5fd68a; font-weight: 600; }
+.result .fail { color: #ff7b7b; font-weight: 600; }
+.result .info { color: #8fa3bf; }
+#timeline { width: 100%; background: #0b101d; border-radius: 8px; border: 1px solid #1e2a45; }
+.legend { display: flex; gap: 16px; font-size: 12px; margin-top: 6px; color: #9fb4d0; }
+.lg.readonly { color: #4aa3ff; }
+.lg.readwrite { color: #f0a13c; }
+.lg.commit { color: #5fd68a; }
+.lg.abort { color: #ff7b7b; }
+.lg.conflict { color: #d98cff; }
+#log {
+  max-height: 260px; overflow-y: auto; font-family: Consolas, Menlo, monospace;
+  font-size: 12px; line-height: 1.6;
+}
+#log .ev { border-bottom: 1px solid #1a2338; padding: 1px 0; }
+#log .t { color: #5b7099; margin-right: 8px; }
+#log .src { color: #7fd4ff; margin-right: 8px; }
+#log .mode-readonly { color: #4aa3ff; }
+#log .mode-readwrite { color: #f0a13c; }
+#log .ok { color: #5fd68a; }
+#log .bad { color: #ff7b7b; }
+#log .warn { color: #d98cff; }

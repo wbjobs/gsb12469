@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IndexedDB 并发实验台</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<header>
+  <h1>IndexedDB 并发实验台</h1>
+  <p class="sub">多标签页 / 多 Worker 事务隔离与并发行为观察 · 无框架</p>
+  <div class="identity">
+    本标签页 ID：<code id="tabId"></code>
+    <span id="peerInfo"></span>
+  </div>
+</header>
+
+<main>
+  <section class="panel" id="configPanel">
+    <h2>1. 事务配置</h2>
+    <div class="row">
+      <label>事务模式
+        <select id="txMode">
+          <option value="readonly">readonly</option>
+          <option value="readwrite" selected>readwrite</option>
+        </select>
+      </label>
+      <label>操作
+        <select id="opKind">
+          <option value="read">读取计数器</option>
+          <option value="increment">读-改-写（计数器 +1）</option>
+          <option value="writeAbort">写入后回滚（abort）</option>
+          <option value="slowIncrement">慢速读-改-写（人为延迟 300ms）</option>
+        </select>
+      </label>
+      <label>执行位置
+        <select id="execWhere">
+          <option value="tab">当前标签页</option>
+          <option value="worker">Worker</option>
+        </select>
+      </label>
+      <button id="btnRunOnce">执行一次事务</button>
+    </div>
+    <div class="row">
+      <label>Worker 数量 <input type="number" id="workerCount" value="2" min="0" max="8"></label>
+      <button id="btnSpawnWorkers">重建 Worker 池</button>
+      <span class="hint">提示：多开几个本页面标签页，事件会通过 BroadcastChannel 汇总到所有标签页。</span>
+    </div>
+  </section>
+
+  <section class="panel" id="stressPanel">
+    <h2>2. 压力测试与结果校验</h2>
+    <div class="row">
+      <label>并发执行者 <input type="number" id="stressActors" value="4" min="1" max="16"></label>
+      <label>每人递增次数 <input type="number" id="stressIncrements" value="50" min="1" max="2000"></label>
+      <label>写入策略
+        <select id="stressStrategy">
+          <option value="atomic">单事务读-改-写（正确）</option>
+          <option value="naive">读、写分两个事务（演示丢失更新）</option>
+        </select>
+      </label>
+      <button id="btnStress">开始压力测试</button>
+      <button id="btnResetCounter">重置计数器</button>
+    </div>
+    <div id="stressResult" class="result"></div>
+  </section>
+
+  <section class="panel" id="verifyPanel">
+    <h2>3. 隔离性验证</h2>
+    <div class="row">
+      <button id="btnVerifyRollback">验证：回滚不影响其他事务</button>
+      <button id="btnVerifyConflict">验证：乐观锁冲突可检测</button>
+      <button id="btnVerifyDeadlock">验证：交叉读写不死锁</button>
+      <button id="btnVerifyDirtyRead">验证：并发写不脏读</button>
+    </div>
+    <div id="verifyResult" class="result"></div>
+  </section>
+
+  <section class="panel" id="timelinePanel">
+    <h2>4. 事务时序图（所有标签页 + Worker）</h2>
+    <div class="row">
+      <button id="btnClearLog">清空日志与时序</button>
+      <label><input type="checkbox" id="followTail" checked> 跟随最新</label>
+    </div>
+    <canvas id="timeline" width="1200" height="260"></canvas>
+    <div class="legend">
+      <span class="lg readonly">readonly</span>
+      <span class="lg readwrite">readwrite</span>
+      <span class="lg commit">● 提交</span>
+      <span class="lg abort">✖ 回滚</span>
+      <span class="lg conflict">◆ 冲突</span>
+    </div>
+  </section>
+
+  <section class="panel" id="logPanel">
+    <h2>5. 事件日志</h2>
+    <div id="log"></div>
+  </section>
+</main>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
