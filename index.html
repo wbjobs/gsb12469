@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>IndexedDB 并发实验室</title>
+<style>
+  :root {
+    --bg: #0f1420;
+    --panel: #171e2e;
+    --panel2: #1e2740;
+    --line: #2b3650;
+    --text: #e6ebf5;
+    --muted: #93a0b8;
+    --blue: #4f9cff;
+    --orange: #f0a35e;
+    --green: #4ec98f;
+    --red: #f06a6a;
+    --yellow: #e7d15e;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font: 13px/1.55 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+  }
+  header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  header h1 { font-size: 17px; margin: 0; }
+  header .sub { color: var(--muted); font-size: 12px; }
+  .layout {
+    display: grid;
+    grid-template-columns: 360px 1fr;
+    gap: 14px;
+    padding: 14px 20px;
+    align-items: start;
+  }
+  @media (max-width: 980px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .panel h2 {
+    font-size: 13px;
+    margin: 0 0 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .stack > * + * { margin-top: 14px; }
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; }
+  button {
+    background: var(--panel2);
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: 7px;
+    padding: 7px 11px;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--blue); color: #fff; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: #244a7d; border-color: #3568a8; }
+  button.danger { background: #6e2f38; border-color: #98414c; }
+  label.field { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  input[type=number], select {
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 5px 8px;
+    width: 90px;
+  }
+  #peers { font-size: 12px; color: var(--muted); }
+  .peer-tag {
+    display: inline-block;
+    padding: 1px 8px;
+    margin: 2px 4px 2px 0;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--panel2);
+  }
+  .peer-tag.worker { border-color: #7a5a2c; color: #e8b978; }
+  .peer-tag.tab { border-color: #2c4a7a; color: #8db8f0; }
+  .peer-tag.self { outline: 1px solid var(--green); }
+  #checks { display: flex; flex-direction: column; gap: 7px; }
+  .check {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    background: var(--panel2);
+  }
+  .check .top { display: flex; align-items: center; gap: 8px; }
+  .check .badge {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700; flex: none;
+  }
+  .check.pass .badge { background: var(--green); color: #08221a; }
+  .check.fail .badge { background: var(--red); color: #2b0d0d; }
+  .check .detail { color: var(--muted); font-size: 11.5px; margin-top: 3px; word-break: break-all; }
+  .scenario-title { font-weight: 600; margin: 2px 0 8px; }
+  .stats { color: var(--muted); font-size: 12px; margin-top: 8px; }
+  #log {
+    height: 180px;
+    overflow: auto;
+    background: #0b101c;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+  .log-line .t { color: #5d6b86; }
+  .log-line.info .m { color: #c4d0e6; }
+  .log-line.ok .m { color: var(--green); }
+  .log-line.warn .m { color: var(--yellow); }
+  .log-line.err .m { color: var(--red); }
+  #timelineWrap { position: relative; }
+  canvas#timeline {
+    width: 100%;
+    display: block;
+    background: #0b101c;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+  }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 11.5px; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .hint { color: var(--muted); font-size: 11.5px; }
+  .manual-state { font-family: ui-monospace, monospace; font-size: 11.5px; color: var(--muted); margin-top: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>IndexedDB 并发实验室</h1>
+  <span class="sub">多标签页 × Web Worker · 事务隔离 / 冲突 / 死锁 / 回滚 / 压测校验</span>
+</header>
+
+<div class="layout">
+  <div class="stack">
+    <div class="panel">
+      <h2>参与节点</h2>
+      <div id="peers"></div>
+      <div class="hint" style="margin-top:8px">
+        再打开一个本页面的标签页，节点会自动加入；本页内置 2 个 Worker。
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>并发场景</h2>
+      <div class="btnrow" style="margin-bottom:10px">
+        <button data-scene="dirty" class="primary">并发写 · 不脏读</button>
+        <button data-scene="rollback">回滚隔离</button>
+        <button data-scene="cas">冲突检测 (CAS)</button>
+        <button data-scene="dead">死锁避免</button>
+      </div>
+      <div class="btnrow">
+        <label class="field">写者数
+          <input id="stressWriters" type="number" min="1" max="32" value="8" />
+        </label>
+        <label class="field">时长 ms
+          <input id="stressDuration" type="number" min="1000" max="20000" step="1000" value="5000" />
+        </label>
+        <button data-scene="stress" class="primary">开始压力测试</button>
+      </div>
+      <div class="btnrow" style="margin-top:10px">
+        <button id="resetData">清空全部数据</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>事务模式手动实验</h2>
+      <div class="btnrow">
+        <label class="field">模式
+          <select id="manualMode">
+            <option value="readonly">readonly</option>
+            <option value="readwrite">readwrite</option>
+          </select>
+        </label>
+        <button id="manualBegin">开始事务</button>
+      </div>
+      <div class="btnrow" style="margin-top:8px">
+        <button id="manualGet" disabled>读取 kv.x</button>
+        <button id="manualPut" disabled>写入随机值</button>
+        <button id="manualCommit" disabled>提交</button>
+        <button id="manualAbort" class="danger" disabled>中止</button>
+      </div>
+      <div class="manual-state" id="manualState">无活动事务</div>
+    </div>
+
+    <div class="panel">
+      <h2>执行日志</h2>
+      <div id="log"></div>
+    </div>
+  </div>
+
+  <div class="stack">
+    <div class="panel" id="timelineWrap">
+      <h2>事务时序图（Canvas，实时滚动 14 秒）</h2>
+      <canvas id="timeline" height="260"></canvas>
+      <div class="legend">
+        <span><i style="background:#4f9cff"></i>readonly（快照隔离）</span>
+        <span><i style="background:#f0a35e"></i>readwrite（独占写）</span>
+        <span><i style="background:#8a93a8"></i>等待锁授权</span>
+        <span><i style="background:#f06a6a"></i>abort / 冲突中止</span>
+        <span><i style="background:#e7d15e"></i>事件标记</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>校验结果</h2>
+      <div id="checks"><div class="hint">运行任一并发场景后在此显示可核验的断言结果。</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="js/common.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
